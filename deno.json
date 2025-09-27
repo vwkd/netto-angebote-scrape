@@ -6,6 +6,7 @@
     "@b-fuze/deno-dom": "jsr:@b-fuze/deno-dom@^0.1.56",
     "@cliffy/command": "jsr:@cliffy/command@^1.0.0-rc.8",
     "@std/path": "jsr:@std/path@^1.1.2",
+    "@std/random": "jsr:@std/random@^0.1.2",
     "content-disposition": "npm:content-disposition@^0.5.4"
   }
 }

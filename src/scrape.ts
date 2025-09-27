@@ -1,3 +1,4 @@
+import { shuffle } from "@std/random";
 import { createSession, destroySession, getPage } from "./fetch/get.ts";
 import { parseOfferPage } from "./parse/offer.ts";
 import { parseBrochurePage } from "./parse/brochure.ts";
@@ -23,7 +24,7 @@ const formatter = new Intl.NumberFormat("default", { style: "percent" });
  * @param options Options
  */
 export async function scrape(options: Options) {
-  const { dir } = options;
+  const { dir, random } = options;
 
   console.info(`Scraping local offers for Netto stores...`);
 
@@ -33,10 +34,14 @@ export async function scrape(options: Options) {
   await Deno.mkdir(dir, { recursive: true });
 
   // integer interval [STORE_ID_MIN, STORE_ID_MAX]
-  const idsToCheck = Array.from(
+  let idsToCheck = Array.from(
     { length: (STORE_ID_MAX - STORE_ID_MIN + 1) },
     (_, i) => STORE_ID_MIN + i,
   );
+
+  if (random) {
+    idsToCheck = shuffle(idsToCheck);
+  }
 
   for (const [i, id] of idsToCheck.entries()) {
     const url = new URL(OFFERS_URL);

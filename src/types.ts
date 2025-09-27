@@ -6,6 +6,10 @@ export interface Options {
    * Path to output directory
    */
   dir: string;
+  /**
+   * Loop in random order
+   */
+  random: boolean;
 }
 
 /**

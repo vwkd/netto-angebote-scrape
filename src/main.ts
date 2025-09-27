@@ -6,5 +6,6 @@ await new Command()
   .version("0.0.1")
   .description("Scrape local offers for Netto stores")
   .option("-d, --dir <path:file>", "Output directory", { required: true })
+  .option("-r, --random", "Use random order")
   .action(scrape)
   .parse(Deno.args);

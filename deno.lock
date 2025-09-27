@@ -16,6 +16,7 @@
     "jsr:@std/path@1": "1.1.2",
     "jsr:@std/path@^1.1.1": "1.1.2",
     "jsr:@std/path@^1.1.2": "1.1.2",
+    "jsr:@std/random@~0.1.2": "0.1.2",
     "jsr:@std/text@~1.0.7": "1.0.16",
     "npm:@types/node@*": "24.2.0",
     "npm:content-disposition@~0.5.4": "0.5.4"
@@ -83,6 +84,9 @@
         "jsr:@std/internal@^1.0.10"
       ]
     },
+    "@std/random@0.1.2": {
+      "integrity": "21e28f39dcc72d522bb0d2bc13586567d6044c86ee77a0056fcde0e13758c3ee"
+    },
     "@std/text@1.0.16": {
       "integrity": "ddb9853b75119a2473857d691cf1ec02ad90793a2e8b4a4ac49d7354281a0cf8"
     }
@@ -112,6 +116,7 @@
       "jsr:@b-fuze/deno-dom@~0.1.56",
       "jsr:@cliffy/command@^1.0.0-rc.8",
       "jsr:@std/path@^1.1.2",
+      "jsr:@std/random@~0.1.2",
       "npm:content-disposition@~0.5.4"
     ]
   }
