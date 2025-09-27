@@ -1,0 +1,11 @@
+{
+  "tasks": {
+    "run": "deno run -RWNE --env-file=.env src/main.ts"
+  },
+  "imports": {
+    "@b-fuze/deno-dom": "jsr:@b-fuze/deno-dom@^0.1.56",
+    "@cliffy/command": "jsr:@cliffy/command@^1.0.0-rc.8",
+    "@std/path": "jsr:@std/path@^1.1.2",
+    "content-disposition": "npm:content-disposition@^0.5.4"
+  }
+}
