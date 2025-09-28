@@ -10,6 +10,7 @@ await new Command()
   .version("0.0.1")
   .description("Scrape local offers for Netto stores")
   .option("-d, --dir <path:file>", "Output directory", { required: true })
+  .option("-k, --known", "Only known stores")
   .option("-o, --offers <offers:string>", "Offer types", {
     collect: true,
     default: offersAll,

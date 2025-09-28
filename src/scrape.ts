@@ -68,7 +68,7 @@ const formatter = new Intl.NumberFormat("default", { style: "percent" });
  * @param options Options
  */
 export async function scrape(options: Options) {
-  const { dir, offers, random } = options;
+  const { dir, known, offers, random } = options;
 
   console.info(`Scraping local offers for Netto stores...`);
 
@@ -96,11 +96,17 @@ export async function scrape(options: Options) {
 
   await Deno.mkdir(dir, { recursive: true });
 
-  // integer interval [STORE_ID_MIN, STORE_ID_MAX]
-  let idsToCheck = Array.from(
-    { length: (STORE_ID_MAX - STORE_ID_MIN + 1) },
-    (_, i) => STORE_ID_MIN + i,
-  );
+  let idsToCheck: number[];
+
+  if (known) {
+    idsToCheck = knownStores.map((s) => s.id);
+  } else {
+    // integer interval [STORE_ID_MIN, STORE_ID_MAX]
+    idsToCheck = Array.from(
+      { length: (STORE_ID_MAX - STORE_ID_MIN + 1) },
+      (_, i) => STORE_ID_MIN + i,
+    );
+  }
 
   if (random) {
     idsToCheck = shuffle(idsToCheck);

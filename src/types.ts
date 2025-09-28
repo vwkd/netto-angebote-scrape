@@ -11,6 +11,10 @@ export interface Options {
    */
   dir: string;
   /**
+   * Only known stores
+   */
+  known: boolean;
+  /**
    * Types of offers to save
    */
   offers: Offer[];
