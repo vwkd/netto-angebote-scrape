@@ -13,6 +13,14 @@ export interface Options {
 }
 
 /**
+ * Store
+ */
+export interface Store {
+  id: number;
+  address: string;
+}
+
+/**
  * Brochures
  *
  * - including local offers if store address is present

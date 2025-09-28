@@ -1,14 +1,16 @@
 import { shuffle } from "@std/random";
+import { join } from "@std/path";
 import { createSession, destroySession, getPage } from "./fetch/get.ts";
 import { parseOfferPage } from "./parse/offer.ts";
 import { parseBrochurePage } from "./parse/brochure.ts";
 import { downloadFile } from "./fetch/download.ts";
-import type { Options } from "./types.ts";
+import type { Options, Store } from "./types.ts";
 
 const STORE_ID_MIN = 1000;
 const STORE_ID_MAX = 9999;
 const OFFERS_URL =
   "https://www.netto-online.de/ueber-netto/Online-Prospekte.chtm";
+const CACHED_STORES_FILENAME = "cached_stores.jsonl";
 
 const formatter = new Intl.NumberFormat("default", { style: "percent" });
 
@@ -27,6 +29,25 @@ export async function scrape(options: Options) {
   const { dir, random } = options;
 
   console.info(`Scraping local offers for Netto stores...`);
+
+  const cachedStoresFilepath = join(dir, CACHED_STORES_FILENAME);
+
+  let cachedStores: Store[] = [];
+  try {
+    const cachedStoresJsonl = await Deno.readTextFile(cachedStoresFilepath);
+
+    cachedStores = cachedStoresJsonl
+      .split("\n")
+      .filter((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => JSON.parse(line) as Store);
+  } catch (err) {
+    if (err instanceof Deno.errors.NotFound) {
+      // noop
+    } else {
+      throw err;
+    }
+  }
 
   const generalPageHtml = await getPage(OFFERS_URL);
   const generalBrochures = parseOfferPage(generalPageHtml).brochures;
@@ -71,6 +92,23 @@ export async function scrape(options: Options) {
         formatter.format((i + 1) / idsToCheck.length)
       })`,
     );
+
+    if (!cachedStores.some((s) => s.id === id)) {
+      console.debug(`Saving to cached stores`);
+
+      const store: Store = {
+        id,
+        address: pageBrochures.address,
+      };
+
+      await Deno.writeTextFile(
+        cachedStoresFilepath,
+        JSON.stringify(store) + "\n",
+        {
+          append: true,
+        },
+      );
+    }
 
     const brochures = pageBrochures.brochures
       .filter((b) => !generalBrochures.some((gb) => gb.id === b.id));
