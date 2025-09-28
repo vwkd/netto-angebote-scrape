@@ -12,6 +12,48 @@ const OFFERS_URL =
   "https://www.netto-online.de/ueber-netto/Online-Prospekte.chtm";
 const CACHED_STORES_FILENAME = "cached_stores.jsonl";
 
+/**
+ * Offer types
+ */
+export const OFFERS = {
+  /**
+   * Filialangebote
+   */
+  "HZ": {
+    re: /^filialangebote-KW\d+$/,
+  },
+  /**
+   * Getränkemarkt
+   */
+  "GHZ": {
+    re: /^getraenkemarkt$/,
+  },
+  /**
+   * Sonderbeilagen
+   */
+  "Ko": {
+    re: /^sonderbeilagen$/,
+  },
+  /**
+   * Neueröffnung
+   */
+  "NE": {
+    re: /^neueroeffnung $/,
+  },
+  /**
+   * Wiedereröffnung
+   */
+  "WE": {
+    re: /^wiedereroefnung $/,
+  },
+  /**
+   * Verkaufsoffener Sonntag
+   */
+  "VOS": {
+    re: /^verkaufsoffenersonntag$/,
+  },
+} as const;
+
 const formatter = new Intl.NumberFormat("default", { style: "percent" });
 
 /**
@@ -26,7 +68,7 @@ const formatter = new Intl.NumberFormat("default", { style: "percent" });
  * @param options Options
  */
 export async function scrape(options: Options) {
-  const { dir, random } = options;
+  const { dir, offers, random } = options;
 
   console.info(`Scraping local offers for Netto stores...`);
 
@@ -114,6 +156,11 @@ export async function scrape(options: Options) {
       .filter((b) => !generalBrochures.some((gb) => gb.id === b.id));
 
     for (const brochure of brochures) {
+      if (!offers.some((offer) => brochure.id.match(OFFERS[offer].re))) {
+        console.debug(`Skipping unselected brochure '${brochure.id}'`);
+        continue;
+      }
+
       console.debug(`Downloading brochure '${brochure.id}'`);
 
       const pageHtml = await getPage(brochure.url, sessionId);

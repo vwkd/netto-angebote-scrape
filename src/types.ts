@@ -1,3 +1,7 @@
+import { OFFERS } from "./scrape.ts";
+
+export type Offer = keyof typeof OFFERS;
+
 /**
  * Options of command
  */
@@ -6,6 +10,10 @@ export interface Options {
    * Path to output directory
    */
   dir: string;
+  /**
+   * Types of offers to save
+   */
+  offers: Offer[];
   /**
    * Loop in random order
    */
