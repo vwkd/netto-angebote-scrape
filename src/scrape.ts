@@ -4,6 +4,7 @@ import { createSession, destroySession, getPage } from "./fetch/get.ts";
 import { parseOfferPage } from "./parse/offer.ts";
 import { parseBrochurePage } from "./parse/brochure.ts";
 import { downloadFile } from "./fetch/download.ts";
+import { range } from "./utils.ts";
 import type { Options, Store } from "./types.ts";
 
 const STORE_ID_MIN = 1000;
@@ -101,11 +102,7 @@ export async function scrape(options: Options) {
   if (known) {
     idsToCheck = knownStores.map((s) => s.id);
   } else {
-    // integer interval [STORE_ID_MIN, STORE_ID_MAX]
-    idsToCheck = Array.from(
-      { length: (STORE_ID_MAX - STORE_ID_MIN + 1) },
-      (_, i) => STORE_ID_MIN + i,
-    );
+    idsToCheck = Array.from(range(STORE_ID_MIN, STORE_ID_MAX));
   }
 
   if (random) {
