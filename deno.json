@@ -1,6 +1,6 @@
 {
   "tasks": {
-    "run": "deno run -RWNE --env-file=.env src/main.ts"
+    "run": "deno run -RWNE --unstable-kv --env-file=.env src/main.ts"
   },
   "imports": {
     "@b-fuze/deno-dom": "jsr:@b-fuze/deno-dom@^0.1.56",
