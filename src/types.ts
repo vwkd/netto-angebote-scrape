@@ -11,9 +11,9 @@ export interface Options {
    */
   dir: string;
   /**
-   * Only known stores
+   * Only likely stores
    */
-  known: boolean;
+  likely: boolean;
   /**
    * Types of offers to save
    */
@@ -26,10 +26,12 @@ export interface Options {
 
 /**
  * Store
+ *
+ * - doesn't exist if address is missing
  */
 export interface Store {
   id: number;
-  address: string;
+  address?: string;
 }
 
 /**

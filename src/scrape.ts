@@ -1,3 +1,4 @@
+import { partition } from "@std/collections";
 import { shuffle } from "@std/random";
 import { join } from "@std/path";
 import { createSession, destroySession, getPage } from "./fetch/get.ts";
@@ -21,36 +22,48 @@ export const OFFERS = {
    * Filialangebote
    */
   "HZ": {
+    checkStores: true,
+    checkBlanks: false,
     re: /^filialangebote-KW\d+$/,
   },
   /**
    * Getränkemarkt
    */
   "GHZ": {
+    checkStores: true,
+    checkBlanks: false,
     re: /^getraenkemarkt$/,
   },
   /**
    * Sonderbeilagen
    */
   "Ko": {
+    checkStores: true,
+    checkBlanks: false,
     re: /^sonderbeilagen$/,
   },
   /**
    * Neueröffnung
    */
   "NE": {
+    checkStores: false,
+    checkBlanks: true,
     re: /^neueroeffnung $/,
   },
   /**
    * Wiedereröffnung
    */
   "WE": {
+    checkStores: true,
+    checkBlanks: true,
     re: /^wiedereroefnung $/,
   },
   /**
    * Verkaufsoffener Sonntag
    */
   "VOS": {
+    checkStores: true,
+    checkBlanks: false,
     re: /^verkaufsoffenersonntag$/,
   },
 } as const;
@@ -69,7 +82,7 @@ const formatter = new Intl.NumberFormat("default", { style: "percent" });
  * @param options Options
  */
 export async function scrape(options: Options) {
-  const { dir, known, offers, random } = options;
+  const { dir, likely, offers, random } = options;
 
   console.info(`Scraping local offers for Netto stores...`);
 
@@ -97,12 +110,32 @@ export async function scrape(options: Options) {
 
   await Deno.mkdir(dir, { recursive: true });
 
+  const allStoreIds = new Set(range(STORE_ID_MIN, STORE_ID_MAX));
+  const cachedStoreIds = new Set(cachedStores.map((s) => s.id));
+  const uncachedStoreIds = allStoreIds.difference(cachedStoreIds);
+
+  const [knownStores, knownBlanks] = partition(
+    cachedStores,
+    (s) => !!s.address,
+  );
+  const knownStoreIds = knownStores.map((s) => s.id);
+  const knownBlankIds = knownBlanks.map((s) => s.id);
+
+  const checkStores = offers.some((offer) => OFFERS[offer].checkStores);
+  const checkBlanks = offers.some((offer) => OFFERS[offer].checkBlanks);
+
   let idsToCheck: number[];
 
-  if (known) {
-    idsToCheck = knownStores.map((s) => s.id);
+  if (likely && !(checkStores && checkBlanks)) {
+    if (checkStores) {
+      idsToCheck = [...knownStoreIds, ...uncachedStoreIds];
+    } else if (checkBlanks) {
+      idsToCheck = [...knownBlankIds, ...uncachedStoreIds];
+    } else {
+      throw new Error("Should be unreachable");
+    }
   } else {
-    idsToCheck = Array.from(range(STORE_ID_MIN, STORE_ID_MAX));
+    idsToCheck = Array.from(allStoreIds);
   }
 
   if (random) {
@@ -116,6 +149,23 @@ export async function scrape(options: Options) {
     const sessionId = await createSession();
     const pageHtml = await getPage(url.toString(), sessionId);
     const pageBrochures = parseOfferPage(pageHtml);
+
+    if (!cachedStores.some((s) => s.id === id)) {
+      console.debug(`Saving to cached stores`);
+
+      const store: Store = {
+        id,
+        address: pageBrochures.address,
+      };
+
+      await Deno.writeTextFile(
+        cachedStoresFilepath,
+        JSON.stringify(store) + "\n",
+        {
+          append: true,
+        },
+      );
+    }
 
     // skip non-existing stores
     if (!pageBrochures.address) {
@@ -137,23 +187,6 @@ export async function scrape(options: Options) {
         formatter.format((i + 1) / idsToCheck.length)
       })`,
     );
-
-    if (!cachedStores.some((s) => s.id === id)) {
-      console.debug(`Saving to cached stores`);
-
-      const store: Store = {
-        id,
-        address: pageBrochures.address,
-      };
-
-      await Deno.writeTextFile(
-        cachedStoresFilepath,
-        JSON.stringify(store) + "\n",
-        {
-          append: true,
-        },
-      );
-    }
 
     const brochures = pageBrochures.brochures
       .filter((b) => !generalBrochures.some((gb) => gb.id === b.id));
