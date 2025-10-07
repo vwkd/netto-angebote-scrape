@@ -138,7 +138,8 @@ export async function scrape(options: Options) {
     const pageHtml = await getPage(url.toString(), sessionId);
     const pageBrochures = parseOfferPage(pageHtml);
 
-    if (!cachedStores.some((s) => s.id === id)) {
+    const cachedStore = cachedStores.find((s) => s.id === id);
+    if (!cachedStore || cachedStore.address !== pageBrochures.address) {
       console.debug(`Saving to cached stores`);
 
       const store: Store = {
