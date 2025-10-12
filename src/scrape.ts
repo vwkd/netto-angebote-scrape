@@ -176,6 +176,9 @@ export async function scrape(options: Options) {
       .filter((b) => !generalBrochures.some((gb) => gb.id === b.id));
 
     for (const brochure of brochures) {
+      if (!Object.values(OFFERS).some((val) => brochure.id.match(val.re))) {
+        console.warn(`Skipping unexpected brochure '${brochure.id}'`);
+      }
       if (!offers.some((offer) => brochure.id.match(OFFERS[offer].re))) {
         console.debug(`Skipping unselected brochure '${brochure.id}'`);
         continue;
