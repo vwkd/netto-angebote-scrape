@@ -1,9 +1,4 @@
-import {
-  FLARESOLVERR_URL,
-  PROXY_PASSWORD,
-  PROXY_URL,
-  PROXY_USERNAME,
-} from "../env.ts";
+import { FLARESOLVERR_URL } from "../env.ts";
 
 const HEADERS = { "Content-Type": "application/json" };
 
@@ -58,16 +53,7 @@ export async function createSession(): Promise<string> {
   const res = await fetch(FLARESOLVERR_URL!, {
     method: "POST",
     headers: HEADERS,
-    body: JSON.stringify({
-      cmd: "sessions.create",
-      ...(PROXY_URL && {
-        proxy: {
-          url: PROXY_URL!,
-          username: PROXY_USERNAME!,
-          password: PROXY_PASSWORD!,
-        },
-      }),
-    }),
+    body: JSON.stringify({ cmd: "sessions.create" }),
   });
 
   if (!res.ok) {
