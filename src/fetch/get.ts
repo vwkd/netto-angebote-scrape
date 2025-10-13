@@ -1,6 +1,5 @@
+import { runCommand } from "@vwkd/flaresolverr";
 import { FLARESOLVERR_URL } from "../env.ts";
-
-const HEADERS = { "Content-Type": "application/json" };
 
 /**
  * Fetch page using FlareSolverr
@@ -15,21 +14,11 @@ export async function getPage(
 ): Promise<string> {
   // console.debug(`Fetching url ${url}`);
 
-  const res = await fetch(FLARESOLVERR_URL!, {
-    method: "POST",
-    headers: HEADERS,
-    body: JSON.stringify({
-      cmd: "request.get",
-      url,
-      ...(sessionId && { session: sessionId }),
-    }),
+  const data = await runCommand(FLARESOLVERR_URL!, {
+    cmd: "request.get",
+    url,
+    ...(sessionId && { session: sessionId }),
   });
-
-  if (!res.ok) {
-    throw new Error(`HTTP error: ${res.status} ${res.statusText}`);
-  }
-
-  const data = await res.json();
 
   if (data.status !== "ok") {
     throw new Error(`Failed to fetch page: ${data.message}`);
@@ -50,17 +39,7 @@ export async function getPage(
  * @returns session ID
  */
 export async function createSession(): Promise<string> {
-  const res = await fetch(FLARESOLVERR_URL!, {
-    method: "POST",
-    headers: HEADERS,
-    body: JSON.stringify({ cmd: "sessions.create" }),
-  });
-
-  if (!res.ok) {
-    throw new Error(`HTTP error: ${res.statusText}`);
-  }
-
-  const data = await res.json();
+  const data = await runCommand(FLARESOLVERR_URL!, { cmd: "sessions.create" });
 
   if (data.status !== "ok") {
     throw new Error(`Failed to create session: ${data.message}`);
@@ -77,20 +56,10 @@ export async function createSession(): Promise<string> {
  * @param sessionId session ID
  */
 export async function destroySession(sessionId: string): Promise<void> {
-  const res = await fetch(FLARESOLVERR_URL!, {
-    method: "POST",
-    headers: HEADERS,
-    body: JSON.stringify({
-      cmd: "sessions.destroy",
-      session: sessionId,
-    }),
+  const data = await runCommand(FLARESOLVERR_URL!, {
+    cmd: "sessions.destroy",
+    session: sessionId,
   });
-
-  if (!res.ok) {
-    throw new Error(`HTTP error: ${res.statusText}`);
-  }
-
-  const data = await res.json();
 
   if (data.status !== "ok") {
     throw new Error(`Failed to destroy session: ${data.message}`);
