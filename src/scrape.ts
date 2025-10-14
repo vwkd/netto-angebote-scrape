@@ -14,6 +14,7 @@ const OFFERS_URL =
   "https://www.netto-online.de/ueber-netto/Online-Prospekte.chtm";
 const CACHED_STORES_FILENAME = "cached_stores.db";
 const CACHED_STORES_PREFIX = ["netto-stores"];
+const OFFERS_FILENAME = "offers.md";
 
 /**
  * Offer types
@@ -88,6 +89,9 @@ export async function scrape(options: Options) {
   console.info(`Scraping local offers for Netto stores...`);
 
   await Deno.mkdir(dir, { recursive: true });
+
+  const offersFilepath = join(dir, OFFERS_FILENAME);
+  await Deno.writeTextFile(offersFilepath, `# Offers\n`);
 
   const cachedStoresFilepath = join(dir, CACHED_STORES_FILENAME);
   using kv = await Deno.openKv(cachedStoresFilepath);
@@ -175,16 +179,41 @@ export async function scrape(options: Options) {
     const brochures = pageBrochures.brochures
       .filter((b) => !generalBrochures.some((gb) => gb.id === b.id));
 
+    let didHeader = false;
     for (const brochure of brochures) {
       if (!Object.values(OFFERS).some((val) => brochure.id.match(val.re))) {
         console.warn(`Skipping unexpected brochure '${brochure.id}'`);
       }
-      if (!offers.some((offer) => brochure.id.match(OFFERS[offer].re))) {
+
+      const offerSelected = offers.find((offer) =>
+        brochure.id.match(OFFERS[offer].re)
+      );
+
+      if (!offerSelected) {
         console.debug(`Skipping unselected brochure '${brochure.id}'`);
         continue;
       }
 
       console.debug(`Downloading brochure '${brochure.id}'`);
+
+      if (!didHeader) {
+        await Deno.writeTextFile(
+          offersFilepath,
+          `\n\n## ${pageBrochures.address}\n`,
+          {
+            append: true,
+          },
+        );
+        didHeader = true;
+      }
+
+      await Deno.writeTextFile(
+        offersFilepath,
+        `\n- [${offerSelected}](${brochure.url})\n`,
+        {
+          append: true,
+        },
+      );
 
       const pageHtml = await getPage(brochure.url, sessionId);
       const downloadUrl = parseBrochurePage(pageHtml);
