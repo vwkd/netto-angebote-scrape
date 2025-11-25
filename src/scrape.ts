@@ -1,13 +1,14 @@
 import { partition } from "@std/collections";
 import { shuffle } from "@std/random";
 import { join } from "@std/path";
-import { chromium } from "patchright";
+import { type Browser, chromium } from "patchright";
 import { parseOfferPage } from "./parse/offer.ts";
 import { parseBrochurePage } from "./parse/brochure.ts";
 import { downloadFile } from "./fetch/download.ts";
 import { range } from "./utils.ts";
 import type { Options, Store } from "./types.ts";
 
+const PARALLEL_JOBS = 3;
 const STORE_ID_MIN = 1000;
 const STORE_ID_MAX = 9999;
 const OFFERS_URL =
@@ -102,12 +103,15 @@ export async function scrape(options: Options) {
 
   const userAgent = await getUserAgent();
 
-  const browser = await chromium.launch({
-    channel: "chrome",
-    headless: true,
-  });
+  const browsers = await Promise.all(
+    Array.from({ length: PARALLEL_JOBS }, async () =>
+      await chromium.launch({
+        channel: "chrome",
+        headless: true,
+      })),
+  );
 
-  const context = await browser.newContext({
+  const context = await browsers[0].newContext({
     userAgent,
   });
 
@@ -149,102 +153,112 @@ export async function scrape(options: Options) {
     idsToCheck = shuffle(idsToCheck);
   }
 
-  for (const [i, id] of idsToCheck.entries()) {
-    const url = new URL(OFFERS_URL);
-    url.searchParams.set("stores_id", String(id));
+  const queue = idsToCheck.entries();
 
-    const context = await browser.newContext({
-      userAgent,
-    });
+  async function doWork(browser: Browser) {
+    for (const [i, id] of queue) {
+      const url = new URL(OFFERS_URL);
+      url.searchParams.set("stores_id", String(id));
 
-    const page = await context.newPage();
-    await page.goto(url.toString());
-    const pageBrochures = await parseOfferPage(page);
+      const context = await browser.newContext({
+        userAgent,
+      });
 
-    const cachedStore = cachedStores.find((s) => s.id === id);
-    if (!cachedStore || cachedStore.address !== pageBrochures.address) {
-      console.debug(`Saving to cached stores`);
+      const page = await context.newPage();
+      await page.goto(url.toString());
+      const pageBrochures = await parseOfferPage(page);
 
-      const store: Store = {
-        id,
-        address: pageBrochures.address,
-      };
+      const cachedStore = cachedStores.find((s) => s.id === id);
+      if (!cachedStore || cachedStore.address !== pageBrochures.address) {
+        console.debug(`Saving to cached stores`);
 
-      const key = [...CACHED_STORES_PREFIX, id];
-      await kv.set(key, store);
-    }
+        const store: Store = {
+          id,
+          address: pageBrochures.address,
+        };
 
-    // skip non-existing stores
-    if (!pageBrochures.address) {
+        const key = [...CACHED_STORES_PREFIX, id];
+        await kv.set(key, store);
+      }
+
+      // skip non-existing stores
+      if (!pageBrochures.address) {
+        console.debug(
+          `Skipping non-existing store ID ${id} of ${
+            i + 1
+          }/${idsToCheck.length} (${
+            formatter.format((i + 1) / idsToCheck.length)
+          })`,
+        );
+
+        await context.close();
+
+        continue;
+      }
+
       console.debug(
-        `Skipping non-existing store ID ${id} of ${
-          i + 1
-        }/${idsToCheck.length} (${
+        `Scraping store ID ${id} of ${i + 1}/${idsToCheck.length} (${
           formatter.format((i + 1) / idsToCheck.length)
         })`,
       );
 
-      await context.close();
+      const brochures = pageBrochures.brochures
+        .filter((b) => !generalBrochures.some((gb) => gb.id === b.id));
 
-      continue;
-    }
+      let didHeader = false;
+      for (const brochure of brochures) {
+        if (!Object.values(OFFERS).some((val) => brochure.id.match(val.re))) {
+          console.warn(`Skipping unexpected brochure '${brochure.id}'`);
+        }
 
-    console.debug(
-      `Scraping store ID ${id} of ${i + 1}/${idsToCheck.length} (${
-        formatter.format((i + 1) / idsToCheck.length)
-      })`,
-    );
+        const offerSelected = offers.find((offer) =>
+          brochure.id.match(OFFERS[offer].re)
+        );
 
-    const brochures = pageBrochures.brochures
-      .filter((b) => !generalBrochures.some((gb) => gb.id === b.id));
+        if (!offerSelected) {
+          console.debug(`Skipping unselected brochure '${brochure.id}'`);
+          continue;
+        }
 
-    let didHeader = false;
-    for (const brochure of brochures) {
-      if (!Object.values(OFFERS).some((val) => brochure.id.match(val.re))) {
-        console.warn(`Skipping unexpected brochure '${brochure.id}'`);
-      }
+        console.debug(`Downloading brochure '${brochure.id}'`);
 
-      const offerSelected = offers.find((offer) =>
-        brochure.id.match(OFFERS[offer].re)
-      );
+        if (!didHeader) {
+          await Deno.writeTextFile(
+            offersFilepath,
+            `\n\n## ${pageBrochures.address}\n`,
+            {
+              append: true,
+            },
+          );
+          didHeader = true;
+        }
 
-      if (!offerSelected) {
-        console.debug(`Skipping unselected brochure '${brochure.id}'`);
-        continue;
-      }
-
-      console.debug(`Downloading brochure '${brochure.id}'`);
-
-      if (!didHeader) {
         await Deno.writeTextFile(
           offersFilepath,
-          `\n\n## ${pageBrochures.address}\n`,
+          `\n- [${offerSelected}](${brochure.url})\n`,
           {
             append: true,
           },
         );
-        didHeader = true;
+
+        const page = await context.newPage();
+        await page.goto(brochure.url);
+        const downloadUrl = await parseBrochurePage(page);
+
+        await downloadFile(downloadUrl, dir);
       }
 
-      await Deno.writeTextFile(
-        offersFilepath,
-        `\n- [${offerSelected}](${brochure.url})\n`,
-        {
-          append: true,
-        },
-      );
-
-      const page = await context.newPage();
-      await page.goto(brochure.url);
-      const downloadUrl = await parseBrochurePage(page);
-
-      await downloadFile(downloadUrl, dir);
+      await context.close();
     }
-
-    await context.close();
   }
 
-  await browser.close();
+  await Promise.all(
+    browsers.map((browser) => doWork(browser)),
+  );
+
+  await Promise.all(
+    browsers.map(async (browser) => await browser.close()),
+  );
 }
 
 /**
