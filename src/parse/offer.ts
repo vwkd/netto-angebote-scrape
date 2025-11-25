@@ -1,4 +1,4 @@
-import { DOMParser } from "@b-fuze/deno-dom";
+import type { Page } from "patchright";
 import type { Brochure, Brochures } from "../types.ts";
 
 const BROCHURE_SELECTOR =
@@ -11,32 +11,30 @@ const ADDRESS_SELECTOR =
 /**
  * Parse offer page of store from Netto website
  *
- * @param pageHtml HTML of page
+ * @param page page
  * @returns brochures
  */
-export function parseOfferPage(pageHtml: string): Brochures {
+export async function parseOfferPage(page: Page): Promise<Brochures> {
   // console.debug("Parsing offer page");
 
-  const doc = new DOMParser().parseFromString(pageHtml, "text/html");
-
-  const brochureElements = doc.querySelectorAll(BROCHURE_SELECTOR);
+  const brochureElements = await page.locator(BROCHURE_SELECTOR).all();
 
   const brochures: Brochure[] = [];
 
   for (const brochureElement of brochureElements) {
-    const anchorElement = brochureElement.querySelector(ANCHOR_SELECTOR);
+    const anchorElement = brochureElement.locator(ANCHOR_SELECTOR).first();
 
-    if (!anchorElement) {
+    if (!await anchorElement.count()) {
       throw new Error("No anchor element found");
     }
 
-    const id = anchorElement.getAttribute("id");
+    const id = await anchorElement.getAttribute("id");
 
     if (!id) {
       throw new Error("No ID found");
     }
 
-    const url = anchorElement.getAttribute("href");
+    const url = await anchorElement.getAttribute("href");
 
     // skip empty placeholder brochures
     if (!url) {
@@ -49,15 +47,21 @@ export function parseOfferPage(pageHtml: string): Brochures {
     });
   }
 
-  const addressElement = doc.querySelector(ADDRESS_SELECTOR);
+  const addressElement = page.locator(ADDRESS_SELECTOR).first();
 
-  if (!addressElement) {
+  if (!await addressElement.count()) {
     return {
       brochures,
     };
   }
 
-  const address = parseAddress(addressElement.textContent);
+  const addressStr = await addressElement.textContent();
+
+  if (!addressStr) {
+    throw new Error("No address text content found");
+  }
+
+  const address = parseAddress(addressStr);
 
   return {
     address,

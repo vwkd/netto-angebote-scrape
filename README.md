@@ -7,7 +7,16 @@ Scrape local offers for Netto stores
 ## Requirements
 
 - Deno
-- [FlareSolverr](https://github.com/FlareSolverr/FlareSolverr)
+
+
+
+## Setup
+
+- install Chrome
+
+```sh
+deno run -A npm:patchright install chromium
+```
 
 
 

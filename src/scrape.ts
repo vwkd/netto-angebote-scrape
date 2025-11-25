@@ -1,7 +1,7 @@
 import { partition } from "@std/collections";
 import { shuffle } from "@std/random";
 import { join } from "@std/path";
-import { createSession, destroySession, getPage } from "./fetch/get.ts";
+import { chromium } from "patchright";
 import { parseOfferPage } from "./parse/offer.ts";
 import { parseBrochurePage } from "./parse/brochure.ts";
 import { downloadFile } from "./fetch/download.ts";
@@ -78,7 +78,8 @@ const formatter = new Intl.NumberFormat("default", { style: "percent" });
  * - fetch offer page from Netto website, parse URLs of brochures, fetch brochure pages, download files to output directory
  * - note: loop over store IDs from 1000 until 9999, since doesn't know if new stores got added
  * - note: offer page returns general offer page for non-existent store!
- * - use FlareSolverr to bypass Cloudflare
+ * - use headful Chrome to bypass anti-bot detection
+ * - use headless instance for faster scraping, but needs to spoof user agent of headful instance
  * - note: use individual sessions otherwise silently gets page for previous store due to cookies
  *
  * @param options Options
@@ -99,8 +100,22 @@ export async function scrape(options: Options) {
     (await Array.fromAsync(kv.list<Store>({ prefix: CACHED_STORES_PREFIX })))
       .map((e) => e.value);
 
-  const generalPageHtml = await getPage(OFFERS_URL);
-  const generalBrochures = parseOfferPage(generalPageHtml).brochures;
+  const userAgent = await getUserAgent();
+
+  const browser = await chromium.launch({
+    channel: "chrome",
+    headless: true,
+  });
+
+  const context = await browser.newContext({
+    userAgent,
+  });
+
+  const page = await context.newPage();
+  await page.goto(OFFERS_URL);
+  const generalBrochures = (await parseOfferPage(page)).brochures;
+
+  await context.close();
 
   const allStoreIds = new Set(range(STORE_ID_MIN, STORE_ID_MAX));
   const cachedStoreIds = new Set(cachedStores.map((s) => s.id));
@@ -138,9 +153,13 @@ export async function scrape(options: Options) {
     const url = new URL(OFFERS_URL);
     url.searchParams.set("stores_id", String(id));
 
-    const sessionId = await createSession();
-    const pageHtml = await getPage(url.toString(), sessionId);
-    const pageBrochures = parseOfferPage(pageHtml);
+    const context = await browser.newContext({
+      userAgent,
+    });
+
+    const page = await context.newPage();
+    await page.goto(url.toString());
+    const pageBrochures = await parseOfferPage(page);
 
     const cachedStore = cachedStores.find((s) => s.id === id);
     if (!cachedStore || cachedStore.address !== pageBrochures.address) {
@@ -165,7 +184,7 @@ export async function scrape(options: Options) {
         })`,
       );
 
-      await destroySession(sessionId);
+      await context.close();
 
       continue;
     }
@@ -215,12 +234,49 @@ export async function scrape(options: Options) {
         },
       );
 
-      const pageHtml = await getPage(brochure.url, sessionId);
-      const downloadUrl = parseBrochurePage(pageHtml);
+      const page = await context.newPage();
+      await page.goto(brochure.url);
+      const downloadUrl = await parseBrochurePage(page);
 
       await downloadFile(downloadUrl, dir);
     }
 
-    await destroySession(sessionId);
+    await context.close();
   }
+
+  await browser.close();
+}
+
+/**
+ * Get user agent of headful browser instance
+ *
+ * @returns User agent string
+ */
+async function getUserAgent(): Promise<string> {
+  const inspectionApi = "https://mockhttp.org/user-agent";
+
+  const browser = await chromium.launch({
+    channel: "chrome",
+    headless: false,
+  });
+
+  const page = await browser.newPage();
+
+  const res = await page.goto(inspectionApi);
+
+  if (!res) {
+    throw new Error(`Got no response`);
+  }
+
+  if (!res.ok) {
+    throw new Error(`Got HTTP error: ${res.status} ${res.statusText}`);
+  }
+
+  const data = await res.json();
+
+  await browser.close();
+
+  const userAgent: string = data.userAgent;
+
+  return userAgent;
 }

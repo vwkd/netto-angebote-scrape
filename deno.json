@@ -1,7 +1,8 @@
 {
   "tasks": {
-    "run": "deno run -RWNE --unstable-kv --env-file=.env src/main.ts"
+    "run": "deno run -A --unstable-kv src/main.ts"
   },
+  "nodeModulesDir": "auto",
   "imports": {
     "@b-fuze/deno-dom": "jsr:@b-fuze/deno-dom@^0.1.56",
     "@cliffy/command": "jsr:@cliffy/command@^1.0.0-rc.8",
@@ -9,7 +10,7 @@
     "@std/path": "jsr:@std/path@^1.1.2",
     "@std/random": "jsr:@std/random@^0.1.2",
     "@total-typescript/ts-reset": "npm:@total-typescript/ts-reset@^0.6.1",
-    "@vwkd/flaresolverr": "jsr:@vwkd/flaresolverr@^0.0.3",
-    "content-disposition": "npm:content-disposition@^0.5.4"
+    "content-disposition": "npm:content-disposition@^0.5.4",
+    "patchright": "npm:patchright@^1.57.0"
   }
 }

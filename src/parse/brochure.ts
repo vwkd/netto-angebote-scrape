@@ -1,25 +1,23 @@
-import { DOMParser } from "@b-fuze/deno-dom";
+import type { Page } from "patchright";
 
 const ANCHOR_SELECTOR = "body div#publication div#main_menu a#downloadAsPdf";
 
 /**
  * Parse brochure page
  *
- * @param pageHtml HTML of page
+ * @param page page
  * @returns URL of brochure PDF
  */
-export function parseBrochurePage(pageHtml: string): string {
+export async function parseBrochurePage(page: Page): Promise<string> {
   // console.debug("Parsing brochure page");
 
-  const doc = new DOMParser().parseFromString(pageHtml, "text/html");
+  const anchorElement = page.locator(ANCHOR_SELECTOR).first();
 
-  const anchorElement = doc.querySelector(ANCHOR_SELECTOR);
-
-  if (!anchorElement) {
+  if (!await anchorElement.count()) {
     throw new Error("No anchor element found");
   }
 
-  const url = anchorElement.getAttribute("href");
+  const url = await anchorElement.getAttribute("href");
 
   if (!url) {
     throw new Error("No URL found");
