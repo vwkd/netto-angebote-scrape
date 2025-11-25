@@ -34,10 +34,10 @@ export async function parseOfferPage(page: Page): Promise<Brochures> {
       throw new Error("No ID found");
     }
 
-    const url = await anchorElement.getAttribute("href");
+    const url = (await anchorElement.getAttribute("href"))!;
 
     // skip empty placeholder brochures
-    if (!url) {
+    if (url.startsWith("https://www.netto-online.de/filialfinder")) {
       continue;
     }
 
