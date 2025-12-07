@@ -1,5 +1,4 @@
 import { partition } from "@std/collections";
-import { shuffle } from "@std/random";
 import { join } from "@std/path";
 import { type Browser, chromium } from "patchright";
 import { parseOfferPage } from "./parse/offer.ts";
@@ -86,7 +85,7 @@ const formatter = new Intl.NumberFormat("default", { style: "percent" });
  * @param options Options
  */
 export async function scrape(options: Options) {
-  const { dir, likely, offers, random } = options;
+  const { dir, likely, offers } = options;
 
   console.info(`Scraping local offers for Netto stores...`);
 
@@ -147,10 +146,6 @@ export async function scrape(options: Options) {
     }
   } else {
     idsToCheck = Array.from(allStoreIds);
-  }
-
-  if (random) {
-    idsToCheck = shuffle(idsToCheck);
   }
 
   const queue = idsToCheck.entries();

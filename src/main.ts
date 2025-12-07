@@ -29,6 +29,5 @@ await new Command()
       return [...agg, values];
     },
   })
-  .option("-r, --random", "Use random order")
   .action(scrape)
   .parse(Deno.args);

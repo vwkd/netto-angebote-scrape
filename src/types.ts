@@ -18,10 +18,6 @@ export interface Options {
    * Types of offers to save
    */
   offers: Offer[];
-  /**
-   * Loop in random order
-   */
-  random: boolean;
 }
 
 /**

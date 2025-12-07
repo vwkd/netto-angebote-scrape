@@ -8,7 +8,6 @@
     "@cliffy/command": "jsr:@cliffy/command@^1.0.0-rc.8",
     "@std/collections": "jsr:@std/collections@^1.1.3",
     "@std/path": "jsr:@std/path@^1.1.2",
-    "@std/random": "jsr:@std/random@^0.1.2",
     "@total-typescript/ts-reset": "npm:@total-typescript/ts-reset@^0.6.1",
     "content-disposition": "npm:content-disposition@^0.5.4",
     "patchright": "npm:patchright@^1.57.0"
