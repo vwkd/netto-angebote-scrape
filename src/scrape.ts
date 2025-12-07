@@ -7,8 +7,6 @@ import { range } from "./utils.ts";
 import type { Options } from "./types.ts";
 
 const PARALLEL_JOBS = 3;
-const STORE_ID_MIN = 1000;
-const STORE_ID_MAX = 9999;
 const OFFERS_URL =
   "https://www.netto-online.de/ueber-netto/Online-Prospekte.chtm";
 const OFFERS_FILENAME = "offers.md";
@@ -82,7 +80,7 @@ const formatter = new Intl.NumberFormat("default", { style: "percent" });
  * @param options Options
  */
 export async function scrape(options: Options) {
-  const { dir, offers } = options;
+  const { dir, end, offers, start } = options;
 
   console.info(`Scraping local offers for Netto stores...`);
 
@@ -111,7 +109,7 @@ export async function scrape(options: Options) {
 
   await context.close();
 
-  const allStoreIds = new Set(range(STORE_ID_MIN, STORE_ID_MAX));
+  const allStoreIds = new Set(range(start, end));
 
   const idsToCheck = Array.from(allStoreIds);
 

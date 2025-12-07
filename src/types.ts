@@ -11,9 +11,17 @@ export interface Options {
    */
   dir: string;
   /**
+   * Last store ID
+   */
+  end: number;
+  /**
    * Types of offers to save
    */
   offers: Offer[];
+  /**
+   * First store ID
+   */
+  start: number;
 }
 
 /**
