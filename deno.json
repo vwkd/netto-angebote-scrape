@@ -1,6 +1,6 @@
 {
   "tasks": {
-    "run": "deno run -A --unstable-kv src/main.ts"
+    "run": "deno run -A src/main.ts"
   },
   "nodeModulesDir": "auto",
   "imports": {

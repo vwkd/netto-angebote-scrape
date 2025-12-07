@@ -1,19 +1,16 @@
-import { partition } from "@std/collections";
 import { join } from "@std/path";
 import { type Browser, chromium } from "patchright";
 import { parseOfferPage } from "./parse/offer.ts";
 import { parseBrochurePage } from "./parse/brochure.ts";
 import { downloadFile } from "./fetch/download.ts";
 import { range } from "./utils.ts";
-import type { Options, Store } from "./types.ts";
+import type { Options } from "./types.ts";
 
 const PARALLEL_JOBS = 3;
 const STORE_ID_MIN = 1000;
 const STORE_ID_MAX = 9999;
 const OFFERS_URL =
   "https://www.netto-online.de/ueber-netto/Online-Prospekte.chtm";
-const CACHED_STORES_FILENAME = "cached_stores.db";
-const CACHED_STORES_PREFIX = ["netto-stores"];
 const OFFERS_FILENAME = "offers.md";
 
 /**
@@ -85,7 +82,7 @@ const formatter = new Intl.NumberFormat("default", { style: "percent" });
  * @param options Options
  */
 export async function scrape(options: Options) {
-  const { dir, likely, offers } = options;
+  const { dir, offers } = options;
 
   console.info(`Scraping local offers for Netto stores...`);
 
@@ -93,12 +90,6 @@ export async function scrape(options: Options) {
 
   const offersFilepath = join(dir, OFFERS_FILENAME);
   await Deno.writeTextFile(offersFilepath, `# Offers\n`);
-
-  const cachedStoresFilepath = join(dir, CACHED_STORES_FILENAME);
-  using kv = await Deno.openKv(cachedStoresFilepath);
-  const cachedStores =
-    (await Array.fromAsync(kv.list<Store>({ prefix: CACHED_STORES_PREFIX })))
-      .map((e) => e.value);
 
   const userAgent = await getUserAgent();
 
@@ -121,32 +112,8 @@ export async function scrape(options: Options) {
   await context.close();
 
   const allStoreIds = new Set(range(STORE_ID_MIN, STORE_ID_MAX));
-  const cachedStoreIds = new Set(cachedStores.map((s) => s.id));
-  const uncachedStoreIds = allStoreIds.difference(cachedStoreIds);
 
-  const [knownStores, knownBlanks] = partition(
-    cachedStores,
-    (s) => !!s.address,
-  );
-  const knownStoreIds = knownStores.map((s) => s.id);
-  const knownBlankIds = knownBlanks.map((s) => s.id);
-
-  const checkStores = offers.some((offer) => OFFERS[offer].checkStores);
-  const checkBlanks = offers.some((offer) => OFFERS[offer].checkBlanks);
-
-  let idsToCheck: number[];
-
-  if (likely && !(checkStores && checkBlanks)) {
-    if (checkStores) {
-      idsToCheck = [...knownStoreIds, ...uncachedStoreIds];
-    } else if (checkBlanks) {
-      idsToCheck = [...knownBlankIds, ...uncachedStoreIds];
-    } else {
-      throw new Error("Should be unreachable");
-    }
-  } else {
-    idsToCheck = Array.from(allStoreIds);
-  }
+  const idsToCheck = Array.from(allStoreIds);
 
   const queue = idsToCheck.entries();
 
@@ -162,19 +129,6 @@ export async function scrape(options: Options) {
       const page = await context.newPage();
       await page.goto(url.toString());
       const pageBrochures = await parseOfferPage(page);
-
-      const cachedStore = cachedStores.find((s) => s.id === id);
-      if (!cachedStore || cachedStore.address !== pageBrochures.address) {
-        console.debug(`Saving to cached stores`);
-
-        const store: Store = {
-          id,
-          address: pageBrochures.address,
-        };
-
-        const key = [...CACHED_STORES_PREFIX, id];
-        await kv.set(key, store);
-      }
 
       // skip non-existing stores
       if (!pageBrochures.address) {
